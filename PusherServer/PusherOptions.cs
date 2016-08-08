@@ -14,6 +14,11 @@ namespace PusherServer
         /// </summary>
         public const string DEFAULT_REST_API_HOST = "api.pusherapp.com";
 
+        /// <summary>
+        /// The default Notify Rest API Host for contacting the Pusher server
+        /// </summary>
+        public const string DEFAULT_NOTIFY_REST_API_HOST = "nativepush-cluster1.pusher.com/server_api";
+
         private static int DEFAULT_HTTPS_PORT = 443;
         private static int DEFAULT_HTTP_PORT = 80;
 
@@ -23,6 +28,7 @@ namespace PusherServer
         bool _hostSet = false;
         int _port = DEFAULT_HTTP_PORT;
         string _hostName = null;
+        string _notifyHostName = null;
         string _cluster = null;
         ISerializeObjectsToJson _jsonSerializer;
         IDeserializeJsonStrings _jsonDeserializer;
@@ -115,6 +121,29 @@ namespace PusherServer
         }
 
         /// <summary>
+        /// Gets or sets the NotifyHostName to use in the base URL
+        /// </summary>
+        public string NotifyHostName
+        {
+            get
+            {
+                return _notifyHostName ?? DEFAULT_NOTIFY_REST_API_HOST;
+            }
+            set
+            {
+                if (Regex.IsMatch(value, "^.*://"))
+                {
+                    string msg = string.Format("The scheme should not be present in the host value: {0}", value);
+                    throw new FormatException(msg);
+                }
+
+                _hostSet = true;
+                _cluster = null;
+                _notifyHostName = value;
+            }
+        }
+
+        /// <summary>
         /// Gets or sets the Json Serializer
         /// </summary>
         public ISerializeObjectsToJson JsonSerializer
@@ -156,6 +185,13 @@ namespace PusherServer
         public Uri GetBaseUrl()
         {
             string baseUrl = (Encrypted ? "https" : "http") + "://" + HostName + GetPort();
+
+            return new Uri(baseUrl);
+        }
+
+        public Uri GetBaseNotifyUrl()
+        {
+            string baseUrl = (Encrypted ? "https" : "http") + "://" + NotifyHostName + GetPort();
 
             return new Uri(baseUrl);
         }

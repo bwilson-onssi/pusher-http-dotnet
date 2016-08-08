@@ -192,9 +192,35 @@ namespace PusherServer
             });
         }
 
+        public INotifyResult Notify(string[] interests, object data)
+        {
+            var bodyData = CreateNotifyBody(interests, data);
+            IRestResponse response = ExecuteNotify("/notifications", bodyData);
+            NotifyResult result = new NotifyResult(response);
+            return result;
+        }
+
+        private NotifyBody CreateNotifyBody(string[] interests, object data)
+        {
+            ValidationHelper.ValidateInterestNames(interests);
+            ValidationHelper.ValidateSocketId(options.SocketId);
+
+            NotifyBody bodyData = new NotifyBody()
+            {
+                data = _options.JsonSerializer.Serialize(data),
+            };
+
+            if (string.IsNullOrEmpty(options.SocketId) == false)
+            {
+                bodyData.socket_id = options.SocketId;
+            }
+
+            return bodyData;
+        }
+
         private TriggerBody CreateTriggerBody(string[] channelNames, string eventName, object data, ITriggerOptions options)
         {
-            ValidationHelper.ValidateChannelNames(channelNames);
+            ValidationHelper.ValidateInterest(channelNames);
             ValidationHelper.ValidateSocketId(options.SocketId);
 
             TriggerBody bodyData = new TriggerBody()
@@ -418,6 +444,28 @@ namespace PusherServer
             _options.RestClient.ExecuteAsync(request, callback);
         }
 
+        private IRestResponse ExecuteNotify(string path, object requestBody)
+        {
+            _options.RestClient.BaseUrl = _options.GetBaseNotifyUrl();
+            var request = CreateAuthenticatedNotifyRequest(Method.POST, path, null, requestBody);
+            Debug.WriteLine(string.Format("Method: {1}{0}Host: {2}{0}Resource: {3}{0}Parameters:{4}",
+                Environment.NewLine,
+                request.Method,
+                _options.RestClient.BaseUrl,
+                request.Resource,
+                string.Join(",", Array.ConvertAll(request.Parameters.ConvertAll(p => p.Name + "=" + p.Value).ToArray(), i => i.ToString()))
+            ));
+
+            IRestResponse response = _options.RestClient.Execute(request);
+
+            Debug.WriteLine(string.Format("Response{0}StatusCode: {1}{0}Body: {2}",
+                Environment.NewLine,
+                response.StatusCode,
+                response.Content));
+
+            return response;
+        }
+
         private IRestRequest CreateAuthenticatedRequest(Method requestType, string resource, object requestParameters, object requestBody)
         {
             SortedDictionary<string, string> queryParams = GetObjectProperties(requestParameters);
@@ -444,6 +492,53 @@ namespace PusherServer
 
             resource = resource.TrimStart('/');
             string path = string.Format("/apps/{0}/{1}", this._appId, resource);
+
+            string authToSign = String.Format(
+                Enum.GetName(requestType.GetType(), requestType) +
+                "\n{0}\n{1}",
+                path,
+                queryString);
+
+            var authSignature = CryptoHelper.GetHmac256(_appSecret, authToSign);
+
+            var requestUrl = path + "?" + queryString + "&auth_signature=" + authSignature;
+            var request = new RestRequest(requestUrl);
+            request.RequestFormat = DataFormat.Json;
+            request.Method = requestType;
+            request.AddBody(requestBody);
+
+            request.AddHeader("Pusher-Library-Name", LIBRARY_NAME);
+            request.AddHeader("Pusher-Library-Version", VERSION.ToString(3));
+
+            return request;
+        }
+
+        private IRestRequest CreateAuthenticatedNotifyRequest(Method requestType, string resource, object requestParameters, object requestBody)
+        {
+            SortedDictionary<string, string> queryParams = GetObjectProperties(requestParameters);
+
+            int timeNow = (int)((DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds);
+            queryParams.Add("auth_key", this._appKey);
+            queryParams.Add("auth_timestamp", timeNow.ToString());
+            queryParams.Add("auth_version", "1.0");
+
+            if (requestBody != null)
+            {
+                JsonSerializer serializer = new JsonSerializer();
+                var bodyDataJson = serializer.Serialize(requestBody);
+                var bodyMD5 = CryptoHelper.GetMd5Hash(bodyDataJson);
+                queryParams.Add("body_md5", bodyMD5);
+            }
+
+            string queryString = string.Empty;
+            foreach(KeyValuePair<string, string> parameter in queryParams)
+            {
+                queryString += parameter.Key + "=" + parameter.Value + "&";
+            }
+            queryString = queryString.TrimEnd('&');
+
+            resource = resource.TrimStart('/');
+            string path = string.Format("/v1/apps/{0}/{1}", this._appId, resource);
 
             string authToSign = String.Format(
                 Enum.GetName(requestType.GetType(), requestType) +

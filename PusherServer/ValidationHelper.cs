@@ -14,9 +14,19 @@ namespace PusherServer
         public static Regex CHANNEL_NAME_REGEX = new Regex(@"\A[a-zA-Z0-9_=@,.;\-]+\z", RegexOptions.Singleline);
 
         /// <summary>
+        /// A regular expression to check that a interest name is in a format allowed and accepted by Pusher.
+        /// </summary>
+        public static Regex INTEREST_NAME_REGEX = new Regex(@"\A[a-zA-Z0-9_=@,.;\-]+\z", RegexOptions.Singleline);
+
+        /// <summary>
         /// The maximum length of a channel name allowed by Pusher.
         /// </summary>
         public static int CHANNEL_NAME_MAX_LENGTH = 164;
+
+        /// <summary>
+        /// The maximum length of a interest name allowed by Pusher.
+        /// </summary>
+        public static int INTEREST_NAME_MAX_LENGTH = 164;
 
         /// <summary>
         /// A regular expression to check that a socket_id is in a format allowed and accepted by Pusher.
@@ -89,6 +99,36 @@ namespace PusherServer
             {
                 ValidateChannelName(e.Channel);
                 ValidateSocketId(e.SocketId);
+            }
+        }
+
+        /// <summary>
+        /// Validate a single interest name is in the allowed format.
+        /// </summary>
+        /// <param name="interest">The interest name to be checked</param>
+        /// <exception cref="FormatException">If the interest name is not in the allowed format.</exception>
+        internal static void ValidateInterest(string interest)
+        {
+            if(interest.Length > CHANNEL_NAME_MAX_LENGTH)
+            {
+                string msg = 
+                    string.Format("The length of the interest name was greater than the allowed {0} characters", INTEREST_NAME_MAX_LENGTH);
+                throw new ArgumentOutOfRangeException(msg);
+            }
+
+            if (CHANNEL_NAME_REGEX.IsMatch(interest) == false)
+            {
+                string msg =
+                    string.Format("interest name \"{0}\" was not in the form: {1}", interest, INTEREST_NAME_REGEX.ToString());
+                throw new FormatException(msg);
+            }
+        }
+
+        internal static void ValidateInterests(string interests)
+        {
+            foreach(string interest in interest)
+            {
+                ValidateInterest(interest);
             }
         }
     }
