@@ -124,9 +124,9 @@ namespace PusherServer
             }
         }
 
-        internal static void ValidateInterests(string interests)
+        internal static void ValidateInterests(string[] interests)
         {
-            foreach(string interest in interest)
+            foreach(string interest in interests)
             {
                 ValidateInterest(interest);
             }

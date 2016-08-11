@@ -202,25 +202,20 @@ namespace PusherServer
 
         private NotifyBody CreateNotifyBody(string[] interests, object data)
         {
-            ValidationHelper.ValidateInterestNames(interests);
-            ValidationHelper.ValidateSocketId(options.SocketId);
+            ValidationHelper.ValidateInterests(interests);
 
             NotifyBody bodyData = new NotifyBody()
             {
-                data = _options.JsonSerializer.Serialize(data),
+                interests = interests,
+                apns = data
             };
-
-            if (string.IsNullOrEmpty(options.SocketId) == false)
-            {
-                bodyData.socket_id = options.SocketId;
-            }
 
             return bodyData;
         }
 
         private TriggerBody CreateTriggerBody(string[] channelNames, string eventName, object data, ITriggerOptions options)
         {
-            ValidationHelper.ValidateInterest(channelNames);
+            ValidationHelper.ValidateChannelNames(channelNames);
             ValidationHelper.ValidateSocketId(options.SocketId);
 
             TriggerBody bodyData = new TriggerBody()
@@ -538,7 +533,7 @@ namespace PusherServer
             queryString = queryString.TrimEnd('&');
 
             resource = resource.TrimStart('/');
-            string path = string.Format("/v1/apps/{0}/{1}", this._appId, resource);
+            string path = string.Format("/server_api/v1/apps/{0}/{1}", this._appId, resource);
 
             string authToSign = String.Format(
                 Enum.GetName(requestType.GetType(), requestType) +

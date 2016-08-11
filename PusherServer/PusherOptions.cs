@@ -17,7 +17,7 @@ namespace PusherServer
         /// <summary>
         /// The default Notify Rest API Host for contacting the Pusher server
         /// </summary>
-        public const string DEFAULT_NOTIFY_REST_API_HOST = "nativepush-cluster1.pusher.com/server_api";
+        public const string DEFAULT_NOTIFY_REST_API_HOST = "nativepush-cluster1.pusher.com";
 
         private static int DEFAULT_HTTPS_PORT = 443;
         private static int DEFAULT_HTTP_PORT = 80;

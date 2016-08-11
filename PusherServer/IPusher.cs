@@ -116,6 +116,12 @@ namespace PusherServer
 
         #endregion
 
+        #region Notify
+
+        INotifyResult Notify(string[] interests, object data);
+
+        #endregion
+
         #region Authentication
 
         /// <summary>
